@@ -1,0 +1,53 @@
+{
+  "timestamp": "2025-10-14T22:28:07.282255",
+  "total_duplicates_found": 3,
+  "files_deleted": 0,
+  "duplicates": [
+    {
+      "file1": {
+        "path": "/home/shreyansh/Desktop/AI/file1.txt",
+        "size": 8,
+        "modified": 1760460965.3230276,
+        "name": "file1.txt"
+      },
+      "file2": {
+        "path": "/home/shreyansh/Desktop/AI/file2.txt",
+        "size": 8,
+        "modified": 1760460974.0932357,
+        "name": "file2.txt"
+      },
+      "similarity": 1.0
+    },
+    {
+      "file1": {
+        "path": "/home/shreyansh/Desktop/AI/file1.txt",
+        "size": 8,
+        "modified": 1760460965.3230276,
+        "name": "file1.txt"
+      },
+      "file2": {
+        "path": "/home/shreyansh/Desktop/AI/file3.txt",
+        "size": 8,
+        "modified": 1760460983.9924707,
+        "name": "file3.txt"
+      },
+      "similarity": 1.0
+    },
+    {
+      "file1": {
+        "path": "/home/shreyansh/Desktop/AI/file2.txt",
+        "size": 8,
+        "modified": 1760460974.0932357,
+        "name": "file2.txt"
+      },
+      "file2": {
+        "path": "/home/shreyansh/Desktop/AI/file3.txt",
+        "size": 8,
+        "modified": 1760460983.9924707,
+        "name": "file3.txt"
+      },
+      "similarity": 1.0
+    }
+  ],
+  "deleted_files": []
+}

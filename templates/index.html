@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Deduplication Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* Floating dots animation */
+        .floating-dots {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float linear infinite;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(20, 20, 20, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(255, 0, 0, 0.3);
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a0000 0%, #ff0000 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            border-bottom: 2px solid #ff0000;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.2rem;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            background: rgba(30, 30, 30, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 0, 0, 0.2);
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            color: #ff0000;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ff0000;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .folder-selection {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .folder-card {
+            background: rgba(40, 40, 40, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid rgba(100, 100, 100, 0.5);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .folder-card:hover {
+            border-color: #ff0000;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 0, 0, 0.3);
+        }
+        
+        .folder-card.selected {
+            background: rgba(255, 0, 0, 0.2);
+            border-color: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+        }
+        
+        .folder-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+        
+        .folder-card p {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            word-break: break-all;
+            color: #cccccc;
+        }
+        
+        .custom-path-section {
+            background: rgba(40, 40, 40, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid rgba(100, 100, 100, 0.5);
+            margin-top: 20px;
+        }
+        
+        .custom-path-section h3 {
+            color: #ff0000;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .custom-path {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .custom-path input {
+            flex: 1;
+            padding: 15px;
+            background: rgba(20, 20, 20, 0.9);
+            border: 2px solid rgba(100, 100, 100, 0.5);
+            border-radius: 10px;
+            font-size: 1rem;
+            color: #ffffff;
+            transition: all 0.3s;
+        }
+        
+        .custom-path input:focus {
+            outline: none;
+            border-color: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+        }
+        
+        .custom-path input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .selected-paths {
+            margin-top: 20px;
+        }
+        
+        .selected-paths h4 {
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .path-tag {
+            display: inline-block;
+            background: rgba(255, 0, 0, 0.2);
+            color: #ffffff;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 20px;
+            border: 1px solid #ff0000;
+            font-size: 0.9rem;
+        }
+        
+        .path-tag .remove {
+            margin-left: 10px;
+            cursor: pointer;
+            color: #ff0000;
+            font-weight: bold;
+        }
+        
+        .path-tag .remove:hover {
+            color: #ff5555;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+            color: white;
+            box-shadow: 0 5px 20px rgba(255, 0, 0, 0.4);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #ff3333 0%, #ff0000 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 0, 0, 0.5);
+        }
+        
+        .btn-primary:disabled {
+            background: #444;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-danger {
+            background: #8b0000;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #a00000;
+        }
+        
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: rgba(40, 40, 40, 0.9);
+            border-radius: 12px;
+            border: 2px solid rgba(255, 0, 0, 0.3);
+        }
+        
+        .progress-container.active {
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 40px;
+            background: rgba(60, 60, 60, 0.8);
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff5555, #ff0000);
+            background-size: 200% 100%;
+            animation: progressGradient 2s ease infinite;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        @keyframes progressGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .progress-text {
+            text-align: center;
+            color: #ffffff;
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+        
+        .duplicates-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: rgba(20, 20, 20, 0.8);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .duplicates-table th,
+        .duplicates-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(100, 100, 100, 0.3);
+        }
+        
+        .duplicates-table th {
+            background: rgba(255, 0, 0, 0.2);
+            font-weight: 700;
+            color: #ff0000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .duplicates-table tr:hover {
+            background: rgba(255, 0, 0, 0.1);
+        }
+        
+        .duplicates-table td {
+            color: #ffffff;
+        }
+        
+        .duplicates-table small {
+            color: #888;
+            font-size: 0.8rem;
+        }
+        
+        .similarity-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .similarity-high {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+        }
+        
+        .similarity-medium {
+            background: linear-gradient(135deg, #ff6600, #cc5500);
+        }
+        
+        .delete-checkbox {
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            accent-color: #ff0000;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(255, 0, 0, 0.3) 0%, rgba(139, 0, 0, 0.3) 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid rgba(255, 0, 0, 0.5);
+            box-shadow: 0 5px 20px rgba(255, 0, 0, 0.2);
+        }
+        
+        .stat-card h3 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            color: #ff0000;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+        
+        .stat-card p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    background: rgba(20, 20, 20, 0.98);
+    color: white;
+    padding: 20px 25px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    min-width: 300px;
+    max-width: 500px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-left: 4px solid #ff0000;
+    animation: slideIn 0.3s ease-out;
+    backdrop-filter: blur(10px);
+}
+
+.toast.success {
+    border-left-color: #00ff00;
+}
+
+.toast.error {
+    border-left-color: #ff0000;
+}
+
+.toast.warning {
+    border-left-color: #ffaa00;
+}
+
+.toast.info {
+    border-left-color: #00aaff;
+}
+
+.toast-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.toast-message {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    line-height: 1.4;
+}
+
+.toast-close {
+    cursor: pointer;
+    font-size: 1.2rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.toast.hiding {
+    animation: slideOut 0.3s ease-out forwards;
+}
+
+
+    </style>
+</head>
+<body>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Floating dots background -->
+    <div class="floating-dots" id="floatingDots"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🔍 AI FILE DEDUPLICATION AGENT</h1>
+            <p>Advanced similarity detection powered by machine learning</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Folder Selection -->
+            <div class="section">
+                <h2 class="section-title">📁 Quick Select - User Folders</h2>
+                <div id="folderSelection" class="folder-selection">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Custom Path Section -->
+            <div class="section">
+                <h2 class="section-title">➕ Add Custom Paths</h2>
+                <div class="custom-path-section">
+                    <h3>Enter folder path:</h3>
+                    <div class="custom-path">
+                        <input type="text" id="customPath" placeholder="/home/username/folder or /path/to/scan">
+                        <button class="btn btn-primary" onclick="addCustomPath()">Add Path</button>
+                    </div>
+                    
+                    <div class="selected-paths" id="selectedPathsContainer" style="display: none;">
+                        <h4>📋 Selected Paths for Scanning:</h4>
+                        <div id="selectedPathsList"></div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px; text-align: center;">
+                    <button class="btn btn-primary" id="startBtn" onclick="startScan()" style="font-size: 1.3rem; padding: 20px 60px;">
+                          START SCAN
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Progress -->
+            <div id="progressContainer" class="progress-container">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 0%">0%</div>
+                </div>
+                <p id="progressText" class="progress-text">Initializing scan...</p>
+            </div>
+            
+            <!-- Statistics -->
+            <div id="statsSection" class="section" style="display: none;">
+                <h2 class="section-title">📊 Scan Results</h2>
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3 id="filesScanned">0</h3>
+                        <p>Files Scanned</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3 id="duplicatesFound">0</h3>
+                        <p>Duplicate Pairs</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Duplicates Table -->
+            <div id="duplicatesSection" class="section" style="display: none;">
+                <h2 class="section-title">🗑️ Duplicate Files Detected</h2>
+                <div class="action-buttons">
+    <button class="btn btn-danger" onclick="deleteSelected()">🗑️ Delete Selected</button>
+    <button class="btn btn-primary" onclick="selectDeleteFile1()">☑️ All: Delete File 1</button>
+    <button class="btn btn-primary" onclick="selectDeleteFile2()">☑️ All: Delete File 2</button>
+    <button class="btn btn-primary" onclick="selectSkipAll()">⊘ Skip All</button>
+</div>
+
+                <table class="duplicates-table">
+    <thead>
+        <tr>
+            <th style="width: 150px; text-align: center;">Action</th>
+            <th>File 1</th>
+            <th>File 2</th>
+            <th style="text-align: center;">Similarity</th>
+            <th style="text-align: center;">Size</th>
+        </tr>
+    </thead>
+    <tbody id="duplicatesBody">
+        <!-- Populated dynamically -->
+    </tbody>
+</table>
+
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    let permissionGranted = false;
+    let selectedFolders = new Set();
+    let allDuplicates = [];
+    
+    // Toast Notification System
+    function showToast(message, type = 'info', duration = 4000) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        const titles = {
+            success: 'Success',
+            error: 'Error',
+            warning: 'Warning',
+            info: 'Info'
+        };
+        
+        toast.innerHTML = `
+            <div class="toast-icon">${icons[type] || icons.info}</div>
+            <div class="toast-content">
+                <div class="toast-title">${titles[type] || titles.info}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <div class="toast-close" onclick="closeToast(this)">✕</div>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Auto remove after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                closeToast(toast.querySelector('.toast-close'));
+            }, duration);
+        }
+    }
+    
+    function closeToast(closeBtn) {
+        const toast = closeBtn.closest('.toast');
+        toast.classList.add('hiding');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }
+
+
+    // Create floating dots
+    function createFloatingDots() {
+        const container = document.getElementById('floatingDots');
+        for (let i = 0; i < 50; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            dot.style.left = Math.random() * 100 + '%';
+            dot.style.animationDuration = (Math.random() * 10 + 5) + 's';
+            dot.style.animationDelay = Math.random() * 5 + 's';
+            container.appendChild(dot);
+        }
+    }
+    
+    // Update selected paths display
+    function updateSelectedPathsDisplay() {
+        const container = document.getElementById('selectedPathsContainer');
+        const list = document.getElementById('selectedPathsList');
+        
+        if (selectedFolders.size === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        container.style.display = 'block';
+        list.innerHTML = Array.from(selectedFolders).map(path => `
+            <span class="path-tag">
+                ${path}
+                <span class="remove" onclick="removePath('${path.replace(/'/g, "\\'")}')">✕</span>
+            </span>
+        `).join('');
+    }
+    
+    // Remove path
+    function removePath(path) {
+        selectedFolders.delete(path);
+        const cards = document.querySelectorAll('.folder-card');
+        cards.forEach(card => {
+            const cardPath = card.querySelector('p').textContent;
+            if (cardPath === path) {
+                card.classList.remove('selected');
+            }
+        });
+        updateSelectedPathsDisplay();
+    }
+    
+    // Load user folders
+    async function loadFolders() {
+        const response = await fetch('/api/folders/user');
+        const folders = await response.json();
+        
+        const container = document.getElementById('folderSelection');
+        container.innerHTML = folders.map(folder => `
+            <div class="folder-card" onclick="toggleFolder('${folder.path.replace(/'/g, "\\'")}')">
+                <h3>📁 ${folder.name}</h3>
+                <p>${folder.path}</p>
+            </div>
+        `).join('');
+    }
+    
+    function toggleFolder(path) {
+        const cards = document.querySelectorAll('.folder-card');
+        const card = Array.from(cards).find(c => c.querySelector('p').textContent === path);
+        
+        if (selectedFolders.has(path)) {
+            selectedFolders.delete(path);
+            card.classList.remove('selected');
+        } else {
+            selectedFolders.add(path);
+            card.classList.add('selected');
+        }
+        updateSelectedPathsDisplay();
+    }
+    
+    function addCustomPath() {
+        const input = document.getElementById('customPath');
+        const path = input.value.trim();
+        
+        if (path) {
+            selectedFolders.add(path);
+            input.value = '';
+            updateSelectedPathsDisplay();
+        }
+    }
+    
+    async function startScan() {
+        if (selectedFolders.size === 0) {
+    alert('⚠️ Please select at least one folder or add a custom path');
+    return;
+}
+
+        
+        if (!permissionGranted) {
+            const paths = Array.from(selectedFolders).join('\n• ');
+            const permission = confirm(
+                `🔐 PERMISSION REQUEST\n\n` +
+                `This application needs permission to:\n\n` +
+                `✓ Read files in the following locations:\n• ${paths}\n\n` +
+                `✓ Analyze file content for similarity detection\n` +
+                `✓ Access file metadata (size, modification date)\n` +
+                `✓ Move duplicate files to quarantine folder\n\n` +
+                `PRIVACY GUARANTEE:\n` +
+                `• All processing happens locally on your machine\n` +
+                `• No data is sent to external servers\n` +
+                `• You control all file operations\n\n` +
+                `Permission will remain active until you refresh this page.\n\n` +
+                `Do you grant permission to proceed?`
+            );
+            
+            if (!permission) {
+    showToast('Permission denied. Scan cancelled.', 'error');
+    return;
+}
+
+            
+            permissionGranted = true;
+            console.log('✅ Permission granted for this session');
+        }
+        
+        const startBtn = document.getElementById('startBtn');
+        startBtn.disabled = true;
+        startBtn.textContent = '⏳ SCANNING...';
+        
+        const progressContainer = document.getElementById('progressContainer');
+        progressContainer.classList.add('active');
+        
+        try {
+            const response = await fetch('/api/scan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({paths: Array.from(selectedFolders)})
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to start scan');
+            }
+            
+            pollProgress();
+        } catch (error) {
+    showToast('Error starting scan: ' + error.message, 'error');
+    startBtn.disabled = false;
+    startBtn.textContent = '🚀 START SCAN';
+}
+
+    }
+    
+    async function pollProgress() {
+        const interval = setInterval(async () => {
+            const response = await fetch('/api/status');
+            const status = await response.json();
+            
+            const fill = document.getElementById('progressFill');
+            const text = document.getElementById('progressText');
+            fill.style.width = status.progress + '%';
+            fill.textContent = status.progress + '%';
+            text.textContent = status.current_step;
+            
+            document.getElementById('filesScanned').textContent = status.files_found;
+            document.getElementById('duplicatesFound').textContent = status.duplicates_found;
+            
+            if (status.duplicates_found > 0) {
+                document.getElementById('statsSection').style.display = 'block';
+            }
+            
+            if (!status.running) {
+    clearInterval(interval);
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('startBtn').textContent = '🚀 START SCAN';
+    
+    if (status.duplicates_found > 0) {
+        loadDuplicates();
+    } else if (status.files_found > 0) {
+    // Show message when no duplicates found
+    showToast(`Scan Complete! Scanned ${status.files_found} files. No duplicate files found. Your files are clean! 🎉`, 'success', 6000);
+    
+    // Hide progress and show stats
+    document.getElementById('progressContainer').classList.remove('active');
+} else {
+    showToast('No files found in selected folders.', 'warning');
+
+
+    }
+}
+
+        }, 500);
+    }
+    
+    async function loadDuplicates() {
+        const response = await fetch('/api/duplicates');
+
+        allDuplicates = await response.json();
+        const tbody = document.getElementById('duplicatesBody');
+
+        tbody.innerHTML = allDuplicates.map((dup, idx) => `
+            <tr>
+                <td style="text-align: center;">
+                    <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="action_${idx}" value="file1" class="delete-radio" 
+                                   data-file="${dup.file1.path}" data-pair="${idx}" checked>
+                            <span style="font-size: 0.85rem;">Delete File 1</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="action_${idx}" value="file2" class="delete-radio" 
+                                   data-file="${dup.file2.path}" data-pair="${idx}">
+                            <span style="font-size: 0.85rem;">Delete File 2</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="action_${idx}" value="both" class="delete-radio" 
+                                   data-file="${dup.file1.path}|${dup.file2.path}" data-pair="${idx}">
+                            <span style="font-size: 0.85rem; color: #ff6666;">Delete Both</span>
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="action_${idx}" value="skip" class="delete-radio" 
+                                   data-file="" data-pair="${idx}">
+                            <span style="font-size: 0.85rem; color: #888;">Skip</span>
+                        </label>
+                    </div>
+                </td>
+                <td>
+                    <strong>${dup.file1.name}</strong><br>
+                    <small>${dup.file1.path}</small><br>
+                    <small style="color: #888;">Modified: ${formatDate(dup.file1.modified)}</small>
+                </td>
+                <td>
+                    <strong>${dup.file2.name}</strong><br>
+                    <small>${dup.file2.path}</small><br>
+                    <small style="color: #888;">Modified: ${formatDate(dup.file2.modified)}</small>
+                </td>
+                <td style="text-align: center;">
+                    <span class="similarity-badge ${dup.similarity >= 95 ? 'similarity-high' : 'similarity-medium'}">
+                        ${dup.similarity}%
+                    </span>
+                </td>
+                <td style="text-align: center;">${formatSize(dup.file1.size)}</td>
+            </tr>
+        `).join('');
+        
+        document.getElementById('duplicatesSection').style.display = 'block';
+    }
+    
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+    
+    function formatDate(timestamp) {
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    }
+    
+    function selectDeleteFile1() {
+    document.querySelectorAll('.delete-radio[value="file1"]').forEach(radio => {
+        radio.checked = true;
+    });
+    showToast('Selected "Delete File 1" for all duplicate pairs', 'success');
+}
+
+    
+    function selectDeleteFile2() {
+    document.querySelectorAll('.delete-radio[value="file2"]').forEach(radio => {
+        radio.checked = true;
+    });
+    showToast('Selected "Delete File 2" for all duplicate pairs', 'success');
+}
+
+    
+    function selectSkipAll() {
+    document.querySelectorAll('.delete-radio[value="skip"]').forEach(radio => {
+        radio.checked = true;
+    });
+    showToast('Skipped all duplicate pairs', 'success');
+}
+
+    
+    async function deleteSelected() {
+        // Get all selected radio buttons (excluding "skip")
+        const selected = Array.from(document.querySelectorAll('.delete-radio:checked'))
+            .filter(radio => radio.value !== 'skip' && radio.dataset.file);
+        
+        if (selected.length === 0) {
+    showToast('No files selected for deletion. All pairs are set to "Skip". Please select files to delete using the radio buttons.', 'warning', 5000);
+    return;
+}
+
+        
+        // Collect all files to delete
+        let filesToDelete = [];
+        selected.forEach(radio => {
+            if (radio.value === 'both') {
+                const files = radio.dataset.file.split('|');
+                filesToDelete.push(...files);
+            } else {
+                filesToDelete.push(radio.dataset.file);
+            }
+        });
+        
+        // Show detailed confirmation
+        const filesList = filesToDelete.slice(0, 10).map((file, idx) => 
+            `${idx + 1}. ${file}`
+        ).join('\n');
+        
+        const moreText = filesToDelete.length > 10 ? `\n... and ${filesToDelete.length - 10} more files` : '';
+        
+        const confirmDelete = confirm(
+            `🗑️ CONFIRM DELETION\n\n` +
+            `You are about to delete ${filesToDelete.length} file(s):\n\n` +
+            `${filesList}${moreText}\n\n` +
+            `Files will be moved to quarantine folder.\n` +
+            `You can recover them later if needed.\n\n` +
+            `Continue with deletion?`
+        );
+        
+        if (!confirmDelete) {
+            return;
+        }
+        
+        // Show loading state
+        const deleteBtn = document.querySelector('.btn-danger');
+        const originalText = deleteBtn.textContent;
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = '⏳ Deleting...';
+        
+        try {
+            const response = await fetch('/api/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({files: filesToDelete})
+            });
+            
+            if (!response.ok) {
+                throw new Error('Deletion request failed');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success > 0) {
+                showToast(`Successfully deleted ${result.success} file(s). Failed: ${result.failures}`, 'success', 5000);
+
+                // Reload duplicates
+                await loadDuplicates();
+                
+                const remaining = allDuplicates.length;
+                document.getElementById('duplicatesFound').textContent = remaining;
+                
+                if (remaining === 0) {
+    document.getElementById('duplicatesSection').style.display = 'none';
+    showToast('All duplicates have been handled! 🎉', 'success', 6000);
+}
+
+            } else {
+    showToast('Deletion failed! No files were deleted. Check console for errors.', 'error');
+}
+
+            
+        } catch (error) {
+    console.error('Delete error:', error);
+    showToast('Error during deletion: ' + error.message, 'error');
+
+
+        } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = originalText;
+        }
+
+        window.location.reload();
+    }
+    
+    function selectAllDuplicates() {
+    document.querySelectorAll('.delete-radio[value="file1"]').forEach(radio => {
+        radio.checked = true;
+    });
+    showToast('Selected "Delete File 1" for all pairs', 'success');
+}
+
+    
+    function toggleSelectAll() {
+        // Not used with radio buttons, but keeping for compatibility
+    }
+    
+    // Initialize
+    createFloatingDots();
+    loadFolders();
+</script>
+
+</body>
+</html>

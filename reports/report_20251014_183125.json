@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-10-14T18:31:25.756303",
+  "total_duplicates_found": 1,
+  "files_deleted": 0,
+  "duplicates": [
+    {
+      "file1": {
+        "path": "/home/shreyansh/Desktop/AI/duplicates_quarantine/new.txt",
+        "size": 18,
+        "modified": 1760445634.7190888,
+        "name": "new.txt"
+      },
+      "file2": {
+        "path": "/home/shreyansh/Desktop/AI/duplicates_quarantine/ff_20251014_182941.txt",
+        "size": 18,
+        "modified": 1760445651.2776873,
+        "name": "ff_20251014_182941.txt"
+      },
+      "similarity": 1.0
+    }
+  ],
+  "deleted_files": []
+}

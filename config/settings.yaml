@@ -1,0 +1,40 @@
+logging:
+  console_output: true
+  file: ./logs/file_agent.log
+  level: INFO
+performance:
+  cache_results: true
+  chunk_size_kb: 64
+  max_workers: 4
+permissions:
+  custom_paths:
+  - /home/shreyansh/Desktop/AI
+  granted: true
+  scope: custom
+  timestamp: '2025-10-14T22:27:57.798031'
+safety:
+  keep_newest: true
+  move_to_quarantine: true
+  quarantine_folder: ./duplicates_quarantine
+  require_confirmation: true
+scanning:
+  include_hidden: false
+  max_file_size_mb: 100
+  skip_extensions:
+  - .exe
+  - .dll
+  - .so
+  - .bin
+  skip_folders:
+  - node_modules
+  - .git
+  - __pycache__
+  - venv
+  - .cache
+  - cache
+  - duplicates_quarantine
+  - .npm
+similarity:
+  embedding_model: all-MiniLM-L6-v2
+  method: tfidf
+  threshold: 0.95

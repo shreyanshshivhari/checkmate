@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-10-14T19:36:57.169023",
+  "total_duplicates_found": 2,
+  "files_deleted": 2,
+  "duplicates": [
+    {
+      "file1": {
+        "path": "/home/shreyansh/Desktop/AI/abhinav.txt",
+        "size": 17,
+        "modified": 1760450610.8273351,
+        "name": "abhinav.txt"
+      },
+      "file2": {
+        "path": "/home/shreyansh/Desktop/AI/shreyansh.txt",
+        "size": 17,
+        "modified": 1760450618.5337086,
+        "name": "shreyansh.txt"
+      },
+      "similarity": 1.0
+    },
+    {
+      "file1": {
+        "path": "/home/shreyansh/Desktop/AI/duplicates_quarantine/ff_20251014_182941.txt",
+        "size": 18,
+        "modified": 1760445651.2776873,
+        "name": "ff_20251014_182941.txt"
+      },
+      "file2": {
+        "path": "/home/shreyansh/Desktop/AI/duplicates_quarantine/new.txt",
+        "size": 18,
+        "modified": 1760445634.7190888,
+        "name": "new.txt"
+      },
+      "similarity": 1.0
+    }
+  ],
+  "deleted_files": [
+    {
+      "original_path": "/home/shreyansh/Desktop/AI/abhinav.txt",
+      "action": "quarantined",
+      "timestamp": "2025-10-14T19:36:57.165397"
+    },
+    {
+      "original_path": "/home/shreyansh/Desktop/AI/duplicates_quarantine/ff_20251014_182941.txt",
+      "action": "quarantined",
+      "timestamp": "2025-10-14T19:36:57.166520"
+    }
+  ]
+}
