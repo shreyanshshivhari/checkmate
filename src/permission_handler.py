@@ -15,6 +15,7 @@ from rich.prompt import Confirm, Prompt
 
 console = Console()
 
+
 class PermissionHandler:
     def __init__(self, config_path="config/settings.yaml"):
         self.config_path = config_path
@@ -35,29 +36,6 @@ class PermissionHandler:
         """Save configuration to YAML"""
         with open(self.config_path, 'w') as f:
             yaml.dump(self.config, f, default_flow_style=False)
-    
-    def check_admin_privileges(self):
-        """Check if running with admin/root privileges"""
-        if self.is_windows:
-            try:
-                import ctypes
-                return ctypes.windll.shell32.IsUserAnAdmin() != 0
-            except:
-                return False
-        else:  # Linux/Unix
-            return os.geteuid() == 0
-    
-    def request_elevation(self):
-        """Request admin/root privileges"""
-        console.print("\n[yellow]Administrative privileges required for full system scan.[/yellow]")
-        
-        if self.is_windows:
-            console.print("[cyan]Please restart the application as Administrator.[/cyan]")
-            console.print("Right-click the script and select 'Run as Administrator'")
-            sys.exit(0)
-        else:  # Linux
-            console.print("[cyan]Requesting sudo privileges...[/cyan]")
-            os.execvp('sudo', ['sudo', 'python3'] + sys.argv)
     
     def display_consent_screen(self):
         """Display permission request and get user consent"""
@@ -100,50 +78,20 @@ class PermissionHandler:
     def get_scan_scope(self):
         """Let user choose scan scope"""
         console.print("\n[bold cyan]Select Scan Scope:[/bold cyan]\n")
-        console.print("1. Full System (All drives and folders - requires admin)")
-        console.print("2. User Folders Only (Documents, Downloads, Desktop, Pictures)")
-        console.print("3. Custom Folders (You select specific folders)")
+        console.print("1. User Folders Only (Documents, Downloads, Desktop, Pictures)")
+        console.print("2. Custom Folders (You select specific folders)")
         
-        choice = Prompt.ask("\nEnter choice", choices=["1", "2", "3"], default="2")
+        choice = Prompt.ask("\nEnter choice", choices=["1", "2"], default="1")
         
         if choice == "1":
-            if not self.check_admin_privileges():
-                need_elevation = Confirm.ask(
-                    "\n[yellow]Full system scan requires admin privileges. Request elevation?[/yellow]",
-                    default=True
-                )
-                if need_elevation:
-                    self.request_elevation()
-                else:
-                    console.print("[yellow]Falling back to User Folders mode.[/yellow]")
-                    choice = "2"
-            scope = "full_system"
-            paths = self._get_full_system_paths()
-        
-        elif choice == "2":
             scope = "user_folders"
             paths = self._get_user_folder_paths()
         
-        else:  # Custom
+        else:  # choice == "2" - Custom
             scope = "custom"
             paths = self._get_custom_paths()
         
         return scope, paths
-    
-    def _get_full_system_paths(self):
-        """Get all system root paths"""
-        if self.is_windows:
-            import string
-            from ctypes import windll
-            drives = []
-            bitmask = windll.kernel32.GetLogicalDrives()
-            for letter in string.ascii_uppercase:
-                if bitmask & 1:
-                    drives.append(f"{letter}:\\")
-                bitmask >>= 1
-            return drives
-        else:  # Linux
-            return ["/"]
     
     def _get_user_folder_paths(self):
         """Get common user folder paths"""
@@ -158,6 +106,10 @@ class PermissionHandler:
             if path.exists():
                 folders.append(str(path))
         
+        console.print(f"\n[cyan]Will scan the following user folders:[/cyan]")
+        for folder_path in folders:
+            console.print(f"  • {folder_path}")
+        
         return folders
     
     def _get_custom_paths(self):
@@ -166,16 +118,24 @@ class PermissionHandler:
         paths = []
         
         while True:
-            path = Prompt.ask("Folder path", default="")
+            path = Prompt.ask(f"Folder {len(paths) + 1} (or press Enter to finish)", default="")
             if not path:
                 break
             
-            path_obj = Path(path)
+            path_obj = Path(path).expanduser()
             if path_obj.exists() and path_obj.is_dir():
                 paths.append(str(path_obj))
                 console.print(f"[green]✓ Added: {path}[/green]")
             else:
                 console.print(f"[red]✗ Invalid path: {path}[/red]")
+        
+        if len(paths) == 0:
+            console.print("[yellow]No folders selected. Defaulting to user folders.[/yellow]")
+            return self._get_user_folder_paths()
+        
+        console.print(f"\n[cyan]Will scan {len(paths)} custom folder(s):[/cyan]")
+        for folder_path in paths:
+            console.print(f"  • {folder_path}")
         
         return paths
     
@@ -226,6 +186,11 @@ class PermissionHandler:
             return False, None, []
         
         scope, paths = self.get_scan_scope()
+        
+        if not paths or len(paths) == 0:
+            console.print("[red]No valid paths selected. Exiting.[/red]")
+            return False, None, []
+        
         self.save_permission(scope, paths)
         
         return True, scope, paths

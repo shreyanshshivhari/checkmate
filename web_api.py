@@ -12,7 +12,7 @@ from pathlib import Path
 from src.permission_handler import PermissionHandler
 from src.scanner import FileScanner
 from src.reader import FileReader
-from src.similarity import SimilarityEngine
+from src.similarity import SimilarityEngine, cluster_duplicates
 from src.database import DatabaseManager
 from src.file_ops import FileOperations
 from src.logger import setup_logger
@@ -27,10 +27,12 @@ scan_status = {
     'current_step': '',
     'files_found': 0,
     'duplicates_found': 0,
+    'clusters_found': 0,
     'error': None
 }
 
 current_duplicates = []
+current_clusters = []
 config = None
 agent_components = None
 
@@ -64,7 +66,7 @@ def get_config():
     return jsonify({
         'similarity_threshold': config['similarity']['threshold'],
         'max_file_size_mb': config['scanning']['max_file_size_mb'],
-        'skip_folders': config['scanning']['skip_folders'][:10],  # First 10
+        'skip_folders': config['scanning']['skip_folders'][:10],
         'quarantine_enabled': config['safety']['move_to_quarantine']
     })
 
@@ -72,7 +74,7 @@ def get_config():
 @app.route('/api/scan', methods=['POST'])
 def start_scan():
     """Start a new scan"""
-    global scan_status, current_duplicates
+    global scan_status, current_duplicates, current_clusters
     
     if scan_status['running']:
         return jsonify({'error': 'Scan already running'}), 400
@@ -90,9 +92,11 @@ def start_scan():
         'current_step': 'Starting scan...',
         'files_found': 0,
         'duplicates_found': 0,
+        'clusters_found': 0,
         'error': None
     }
     current_duplicates = []
+    current_clusters = []
     
     # Run scan in background thread
     thread = threading.Thread(target=run_scan, args=(paths,))
@@ -103,7 +107,7 @@ def start_scan():
 
 def run_scan(paths):
     """Run the scan in background"""
-    global scan_status, current_duplicates, agent_components
+    global scan_status, current_duplicates, current_clusters, agent_components
     
     try:
         # Step 1: Scan files
@@ -134,9 +138,14 @@ def run_scan(paths):
         scan_status['current_step'] = 'Computing similarities...'
         duplicates = agent_components['similarity'].compute_similarity(file_contents)
         
-        # Limit to 1000 for UI performance
-        if len(duplicates) > 1000:
-            duplicates = duplicates[:1000]
+        # Step 4: Cluster duplicates
+        scan_status['current_step'] = 'Clustering duplicate groups...'
+        scan_status['progress'] = 80
+        
+        if len(duplicates) > 0:
+            clusters = cluster_duplicates(duplicates)
+            current_clusters = clusters
+            scan_status['clusters_found'] = len(clusters)
         
         current_duplicates = duplicates
         scan_status['duplicates_found'] = len(duplicates)
@@ -158,8 +167,7 @@ def get_status():
 
 @app.route('/api/duplicates', methods=['GET'])
 def get_duplicates():
-    """Get found duplicates"""
-    # Format for frontend
+    """Get found duplicates (pairs format - legacy)"""
     formatted = []
     for idx, dup in enumerate(current_duplicates):
         formatted.append({
@@ -182,22 +190,77 @@ def get_duplicates():
     return jsonify(formatted)
 
 
+@app.route('/api/clusters', methods=['GET'])
+def get_clusters():
+    """Get duplicate clusters (NEW - grouped format)"""
+    formatted = []
+    
+    for idx, cluster in enumerate(current_clusters):
+        cluster_files = []
+        for file_meta in cluster['files']:
+            cluster_files.append({
+                'path': file_meta['path'],
+                'name': Path(file_meta['path']).name,
+                'size': file_meta['size'],
+                'modified': file_meta.get('modified', 0)
+            })
+        
+        formatted.append({
+            'id': idx,
+            'files': cluster_files,
+            'count': cluster['count'],
+            'avg_similarity': round(cluster['avg_similarity'] * 100, 1)
+        })
+    
+    return jsonify(formatted)
+
+
 @app.route('/api/delete', methods=['POST'])
 def delete_files():
     """Delete selected files"""
-    data = request.json
-    file_paths = data.get('files', [])
+    global current_duplicates, current_clusters
     
-    if not file_paths:
-        return jsonify({'error': 'No files provided'}), 400
+    try:
+        data = request.json
+        file_paths = data.get('files', [])
+        
+        if not file_paths:
+            return jsonify({'error': 'No files provided'}), 400
+        
+        print(f"\n🗑️  Deletion request for {len(file_paths)} files:")
+        for path in file_paths:
+            print(f"   - {path}")
+        
+        success_count, failure_count, log = agent_components['file_ops'].bulk_delete(file_paths)
+        
+        print(f"✅ Success: {success_count}, ❌ Failures: {failure_count}")
+        
+        # Clear cache after deletion
+        deleted_paths = set(file_paths)
+        current_duplicates = [
+            dup for dup in current_duplicates 
+            if dup['file1']['path'] not in deleted_paths 
+            and dup['file2']['path'] not in deleted_paths
+        ]
+        
+        # Recluster after deletion
+        if current_duplicates:
+            current_clusters = cluster_duplicates(current_duplicates)
+        else:
+            current_clusters = []
+        
+        return jsonify({
+            'success': success_count,
+            'failures': failure_count,
+            'log': log,
+            'remaining_clusters': len(current_clusters)
+        })
     
-    success_count, failure_count, log = agent_components['file_ops'].bulk_delete(file_paths)
-    
-    return jsonify({
-        'success': success_count,
-        'failures': failure_count,
-        'log': log
-    })
+    except Exception as e:
+        print(f"❌ Error in delete endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/folders/user', methods=['GET'])

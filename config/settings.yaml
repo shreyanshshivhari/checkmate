@@ -8,10 +8,15 @@ performance:
   max_workers: 4
 permissions:
   custom_paths:
-  - /home/shreyansh/Desktop/AI
+  - /home/shreyansh/Documents
+  - /home/shreyansh/Downloads
+  - /home/shreyansh/Desktop
+  - /home/shreyansh/Pictures
+  - /home/shreyansh/Videos
+  - /home/shreyansh/Music
   granted: true
-  scope: custom
-  timestamp: '2025-10-14T22:27:57.798031'
+  scope: user_folders
+  timestamp: '2025-10-16T00:44:12.587671'
 safety:
   keep_newest: true
   move_to_quarantine: true
@@ -25,7 +30,19 @@ scanning:
   - .dll
   - .so
   - .bin
+  - .pdf
   skip_folders:
+  - /root
+  - /proc
+  - /sys
+  - /dev
+  - /run
+  - /tmp
+  - /var/lock
+  - /var/run
+  - /snap
+  - /boot
+  - /lost+found
   - node_modules
   - .git
   - __pycache__
